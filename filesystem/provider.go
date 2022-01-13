@@ -16,16 +16,31 @@
 package filesystem
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"context"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // Provider returns the actual provider instance.
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	return &schema.Provider{
+		ConfigureContextFunc: providerConfigure,
+		Schema: map[string]*schema.Schema{
+			"base_path": {
+				Type:     schema.TypeString,
+				Default:  "",
+				Optional: true,
+			},
+		},
 		ResourcesMap: map[string]*schema.Resource{
 			"filesystem_file_reader": resourceFileReader(),
 			"filesystem_file_writer": resourceFileWriter(),
 		},
 	}
+}
+
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	basePath := d.Get("base_path").(string)
+	var diags diag.Diagnostics
+	return basePath, diags
 }

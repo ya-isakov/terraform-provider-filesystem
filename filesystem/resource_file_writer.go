@@ -18,8 +18,9 @@ package filesystem
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 )
 
@@ -32,18 +33,10 @@ func resourceFileWriter() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"path": &schema.Schema{
-				Type:             schema.TypeString,
-				Description:      "Path to write the file on disk",
-				ForceNew:         true,
-				Required:         true,
-				DiffSuppressFunc: diffSuppressRelativePath,
-			},
-
-			"root": &schema.Schema{
 				Type:        schema.TypeString,
-				Description: "Path to the root of the module",
+				Description: "Path to write the file on disk",
 				ForceNew:    true,
-				Optional:    true,
+				Required:    true,
 			},
 
 			"contents": &schema.Schema{
@@ -94,15 +87,16 @@ func resourceFileWriter() *schema.Resource {
 
 // resourceFileWriterCreate expands the file path and writes the file to disk.
 func resourceFileWriterCreate(d *schema.ResourceData, meta interface{}) error {
+	root := meta.(string)
 	path := d.Get("path").(string)
-	root := d.Get("root").(string)
+	full_path := filepath.Join(root, path)
 
-	p, err := expandRelativePath(path, root)
+	p, err := expandRelativePath(full_path, "")
 	if err != nil {
 		return err
 	}
 
-	d.Set("path", p)
+	d.Set("path", path)
 
 	mode, err := parseFileMode(d.Get("mode").(string))
 	if err != nil {
@@ -127,14 +121,19 @@ func resourceFileWriterCreate(d *schema.ResourceData, meta interface{}) error {
 // it fails to read the contents. The entire file contents are read into memory
 // because Terraform cannot pass around an io.Reader.
 func resourceFileWriterRead(d *schema.ResourceData, meta interface{}) error {
-	p := d.Id()
-
+	root := meta.(string)
+	path := d.Get("path").(string)
+	full_path := filepath.Join(root, path)
+	p, err := expandRelativePath(full_path, "")
+	if err != nil {
+		return err
+	}
 	stat, err := readFileAndStats(p)
 	if err != nil {
 		return err
 	}
 
-	d.Set("path", p)
+	d.Set("path", path)
 	d.Set("name", stat.name)
 	d.Set("contents", stat.contents)
 	d.Set("size", stat.size)
@@ -145,8 +144,14 @@ func resourceFileWriterRead(d *schema.ResourceData, meta interface{}) error {
 
 // resourceFileWriterUpdate updates the file contents.
 func resourceFileWriterUpdate(d *schema.ResourceData, meta interface{}) error {
-	p := d.Id()
+	root := meta.(string)
+	path := d.Get("path").(string)
+	full_path := filepath.Join(root, path)
 
+	p, err := expandRelativePath(full_path, "")
+	if err != nil {
+		return err
+	}
 	// If the contents have changed, everything else will chagen too on the atomic
 	// write, so just delegate.
 	if d.HasChange("contents") {
@@ -171,7 +176,13 @@ func resourceFileWriterUpdate(d *schema.ResourceData, meta interface{}) error {
 
 // resourceFileWriterDelete deletes the file if the user specified to delete it.
 func resourceFileWriterDelete(d *schema.ResourceData, meta interface{}) error {
-	p := d.Id()
+	root := meta.(string)
+	path := d.Get("path").(string)
+	full_path := filepath.Join(root, path)
+	p, err := expandRelativePath(full_path, "")
+	if err != nil {
+		return err
+	}
 
 	if d.Get("delete_on_destroy").(bool) {
 		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {

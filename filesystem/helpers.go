@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 )

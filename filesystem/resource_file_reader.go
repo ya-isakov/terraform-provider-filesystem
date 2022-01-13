@@ -16,7 +16,7 @@
 package filesystem
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceFileReader() *schema.Resource {
@@ -27,11 +27,10 @@ func resourceFileReader() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"path": &schema.Schema{
-				Type:             schema.TypeString,
-				Description:      "Path to read the file on disk",
-				ForceNew:         true,
-				Required:         true,
-				DiffSuppressFunc: diffSuppressRelativePath,
+				Type:        schema.TypeString,
+				Description: "Path to read the file on disk",
+				ForceNew:    true,
+				Required:    true,
 			},
 
 			"root": &schema.Schema{
